@@ -2,9 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BadgeCheck,
-  CreditCard,
   Headphones,
   LifeBuoy,
+  MessageCircle,
   ShieldCheck,
   Sparkles,
   Waves,
@@ -16,10 +16,10 @@ import { categories, imagePool } from "@/lib/data";
 import { getListings } from "@/lib/listings";
 
 const trustItems = [
-  { icon: CreditCard, title: "Paiement sécurisé", copy: "Cartes, dépôt et frais visibles avant confirmation." },
+  { icon: MessageCircle, title: "Demande sans friction", copy: "Aucune carte bancaire au lancement, contact direct avec le propriétaire." },
   { icon: BadgeCheck, title: "Propriétaires vérifiés", copy: "Profils locaux, notes et temps de réponse affichés." },
   { icon: Headphones, title: "Assistance locale", copy: "Support Ottawa-Gatineau pour les questions terrain." },
-  { icon: ShieldCheck, title: "Conditions transparentes", copy: "Assurance, règles et annulation lisibles avant paiement." },
+  { icon: ShieldCheck, title: "Conditions transparentes", copy: "Prix estimés, dépôt et règles visibles avant la demande." },
 ];
 
 const steps = [
@@ -29,7 +29,7 @@ const steps = [
   },
   {
     title: "Réservez en ligne",
-    copy: "Ajoutez dates, passagers, adresse de livraison et paiement sécurisé.",
+    copy: "Envoyez une demande avec dates, passagers et adresse de livraison.",
   },
   {
     title: "Profitez de l'eau",

@@ -23,17 +23,18 @@ export function SuccessAnimation({ listing }: { listing: JetSkiListing }) {
         </motion.span>
       </motion.div>
 
-      <p className="mt-6 text-sm font-bold text-cyan-700">Réservation RW-7429</p>
-      <h1 className="mt-2 text-3xl font-bold text-slate-950 sm:text-4xl">Votre sortie est confirmée.</h1>
+      <p className="mt-6 text-sm font-bold text-cyan-700">Demande RW-7429</p>
+      <h1 className="mt-2 text-3xl font-bold text-slate-950 sm:text-4xl">Votre demande est envoyée.</h1>
       <p className="mx-auto mt-3 max-w-xl text-slate-600">
-        {listing.host.name} a reçu le récapitulatif et vous contactera avant la remise du jet-ski.
+        {listing.host.name} a reçu le récapitulatif et vous contactera pour confirmer la
+        disponibilité, les consignes et le point de remise.
       </p>
 
       <div className="mt-8 grid gap-3 rounded-lg bg-slate-50 p-4 text-left sm:grid-cols-2">
         <Info label="Jet-ski" value={listing.name} />
         <Info label="Propriétaire" value={listing.host.name} />
         <Info label="Lieu" value={listing.location} />
-        <Info label="Total estimé" value={formatCurrency(listing.pricePerDay + listing.deliveryFee + listing.serviceFee + listing.deposit)} />
+        <Info label="Estimation" value={formatCurrency(listing.pricePerDay + listing.deliveryFee + listing.deposit)} />
         <Info label="Contact" value={listing.host.phone} />
         <Info label="Mode" value={listing.deliveryAvailable ? "Livraison au quai" : "Récupération sur place"} />
       </div>
@@ -44,7 +45,7 @@ export function SuccessAnimation({ listing }: { listing: JetSkiListing }) {
           className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#073b5d] px-6 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#052f4c]"
         >
           <ReceiptText size={18} />
-          Voir mes réservations
+          Voir mes demandes
         </Link>
         <Link
           href="/messages"

@@ -15,9 +15,9 @@ export default async function ReservationPage({
       <section className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <p className="text-sm font-bold text-cyan-700">Réservation</p>
-          <h1 className="mt-2 text-4xl font-bold text-slate-950">Finalisez votre sortie sur l&apos;eau.</h1>
+          <h1 className="mt-2 text-4xl font-bold text-slate-950">Envoyez une demande au propriétaire.</h1>
           <p className="mt-3 max-w-2xl text-slate-600">
-            Un parcours rapide avec frais, dépôt, identité et paiement affichés avant confirmation.
+            Un parcours rapide avec dates, livraison, contact, dépôt estimé et confirmation humaine.
           </p>
         </div>
       </section>

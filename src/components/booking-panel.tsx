@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { CalendarDays, Clock, CreditCard, MapPin, ShieldCheck, Truck } from "lucide-react";
+import { CalendarDays, Clock, MapPin, MessageCircle, ShieldCheck, Truck } from "lucide-react";
 import { formatCurrency, type JetSkiListing } from "@/lib/data";
 
 export function BookingPanel({ listing }: { listing: JetSkiListing }) {
@@ -10,7 +10,7 @@ export function BookingPanel({ listing }: { listing: JetSkiListing }) {
   const [mode, setMode] = useState<"pickup" | "delivery">("delivery");
   const rental = useMemo(() => listing.pricePerDay * days, [days, listing.pricePerDay]);
   const delivery = mode === "delivery" && listing.deliveryAvailable ? listing.deliveryFee : 0;
-  const total = rental + delivery + listing.serviceFee + listing.deposit;
+  const total = rental + delivery + listing.deposit;
 
   return (
     <aside className="sticky top-24 rounded-lg border border-slate-200 bg-white p-5 shadow-xl shadow-slate-950/10">
@@ -20,7 +20,7 @@ export function BookingPanel({ listing }: { listing: JetSkiListing }) {
             {formatCurrency(listing.pricePerDay)}
             <span className="text-sm font-medium text-slate-500"> / jour</span>
           </p>
-          <p className="mt-1 text-sm text-slate-600">Dépôt remboursable inclus au total.</p>
+          <p className="mt-1 text-sm text-slate-600">Aucun paiement en ligne au lancement.</p>
         </div>
         <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-700">
           {listing.cancellation}
@@ -104,10 +104,9 @@ export function BookingPanel({ listing }: { listing: JetSkiListing }) {
       <div className="mt-5 space-y-3 border-t border-slate-100 pt-5 text-sm">
         <Line label={`Location x ${days} jour${days > 1 ? "s" : ""}`} value={formatCurrency(rental)} />
         <Line label="Frais de livraison" value={delivery ? formatCurrency(delivery) : "0 $"} />
-        <Line label="Frais de service" value={formatCurrency(listing.serviceFee)} />
-        <Line label="Dépôt de sécurité" value={formatCurrency(listing.deposit)} />
+        <Line label="Dépôt à prévoir" value={formatCurrency(listing.deposit)} />
         <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-base font-bold text-slate-950">
-          <span>Total</span>
+          <span>Estimation</span>
           <span>{formatCurrency(total)}</span>
         </div>
       </div>
@@ -116,13 +115,13 @@ export function BookingPanel({ listing }: { listing: JetSkiListing }) {
         href={`/reservation?jet=${listing.slug}`}
         className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#073b5d] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#052f4c]"
       >
-        <CreditCard size={18} />
-        Réserver maintenant
+        <MessageCircle size={18} />
+        Demander la disponibilité
       </Link>
 
       <p className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
         <ShieldCheck size={15} className="text-emerald-600" />
-        Paiement sécurisé, identité vérifiée plus tard.
+        Le propriétaire confirme avant toute étape payante future.
       </p>
     </aside>
   );

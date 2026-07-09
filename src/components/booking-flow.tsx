@@ -6,7 +6,6 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
-  CreditCard,
   ShieldCheck,
   MapPin,
   Truck,
@@ -20,8 +19,7 @@ const steps = [
   { title: "Mode", icon: Truck },
   { title: "Client", icon: UserRound },
   { title: "Identité", icon: ShieldCheck },
-  { title: "Paiement", icon: CreditCard },
-  { title: "Confirmation", icon: CheckCircle2 },
+  { title: "Demande", icon: CheckCircle2 },
 ];
 
 export function BookingFlow({ listing }: { listing: JetSkiListing }) {
@@ -36,7 +34,7 @@ export function BookingFlow({ listing }: { listing: JetSkiListing }) {
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-7">
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {steps.map((item, index) => {
               const Icon = item.icon;
               const active = index <= step;
@@ -76,8 +74,7 @@ export function BookingFlow({ listing }: { listing: JetSkiListing }) {
         {step === 1 ? <ModeStep mode={mode} setMode={setMode} deliveryAvailable={listing.deliveryAvailable} /> : null}
         {step === 2 ? <ClientStep /> : null}
         {step === 3 ? <IdentityStep /> : null}
-        {step === 4 ? <PaymentStep /> : null}
-        {step === 5 ? <ReadyStep listing={listing} /> : null}
+        {step === 4 ? <ReadyStep listing={listing} /> : null}
 
         <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <button
@@ -102,7 +99,7 @@ export function BookingFlow({ listing }: { listing: JetSkiListing }) {
               href={`/reservation/succes?jet=${listing.slug}`}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#073b5d] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#052f4c]"
             >
-              Confirmer la réservation
+              Envoyer la demande
               <CheckCircle2 size={17} />
             </Link>
           )}
@@ -119,9 +116,13 @@ export function BookingFlow({ listing }: { listing: JetSkiListing }) {
           <Line label="Service" value={formatCurrency(listing.serviceFee)} />
           <Line label="Dépôt" value={formatCurrency(listing.deposit)} />
           <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-base font-bold text-slate-950">
-            <span>Total sécurisé</span>
+            <span>Estimation</span>
             <span>{formatCurrency(total)}</span>
           </div>
+          <p className="rounded-lg bg-cyan-50 p-3 text-xs font-semibold text-cyan-900">
+            Aucun paiement en ligne au lancement. Le propriétaire confirme la disponibilité et
+            les modalités directement avec vous.
+          </p>
         </div>
       </aside>
     </div>
@@ -212,21 +213,7 @@ function IdentityStep() {
         <Input label="Numéro de document" type="text" placeholder="RW-2026-000" />
       </div>
       <div className="mt-5 rounded-lg bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
-        Vérification simulée : les connecteurs Stripe Identity ou Persona peuvent être branchés ici.
-      </div>
-    </div>
-  );
-}
-
-function PaymentStep() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-slate-950">Paiement sécurisé</h1>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <Input label="Nom sur la carte" type="text" placeholder="Alex Martin" />
-        <Input label="Numéro de carte" type="text" placeholder="4242 4242 4242 4242" />
-        <Input label="Expiration" type="text" placeholder="08 / 29" />
-        <Input label="CVC" type="password" placeholder="123" />
+        Vérification simulée : la vraie vérification d&apos;identité pourra être branchée ici plus tard.
       </div>
     </div>
   );
@@ -235,13 +222,14 @@ function PaymentStep() {
 function ReadyStep({ listing }: { listing: JetSkiListing }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-950">Prêt à confirmer</h1>
+      <h1 className="text-2xl font-bold text-slate-950">Envoyer votre demande</h1>
       <p className="mt-3 max-w-2xl text-slate-600">
-        La demande sera envoyée à {listing.host.name}. Le paiement est capturé seulement après
-        confirmation du propriétaire dans ce prototype.
+        La demande sera envoyée à {listing.host.name}. Aucun paiement n&apos;est demandé maintenant :
+        le propriétaire confirme la disponibilité, les consignes et la remise du jet-ski.
       </p>
       <div className="mt-5 rounded-lg border border-cyan-200 bg-cyan-50 p-4 text-sm font-semibold text-cyan-900">
-        Réservation estimée en moins de 2 minutes avec frais transparents et dépôt indiqué.
+        Objectif lancement : friction minimale, contact rapide, prix estimé clair et validation
+        humaine avant toute étape de paiement future.
       </div>
     </div>
   );

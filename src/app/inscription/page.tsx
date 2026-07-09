@@ -28,7 +28,7 @@ export default function InscriptionPage() {
             <BadgeCheck size={18} />
             Compte client ou propriétaire
           </p>
-          <p className="mt-1">Le profil pourra ensuite accueillir Stripe, vérification d&apos;identité et avis.</p>
+          <p className="mt-1">Le profil pourra ensuite accueillir vérification d&apos;identité, avis et demandes suivies.</p>
         </div>
         <Link
           href="/dashboard"

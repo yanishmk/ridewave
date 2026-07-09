@@ -5,7 +5,15 @@ Exécuter ces fichiers dans le SQL Editor Supabase, dans cet ordre :
 1. `01_schema.sql`
 2. `02_seed_jet_skis.sql`
 
-Le schéma crée une table publique `jet_skis`, active Row Level Security et autorise seulement la lecture publique des annonces avec `status = 'active'`.
+Le schéma crée :
+
+- `jet_skis` pour les annonces publiques.
+- `profiles` pour les comptes client/propriétaire.
+- `rental_requests` pour les vraies demandes envoyées par les clients.
+- `favorites` pour les favoris d'un utilisateur connecté.
+- `conversations` et `messages` pour la messagerie.
+
+Row Level Security est activé sur toutes les tables privées. Un visiteur non connecté peut seulement lire les annonces actives.
 
 Le seed ajoute 10 annonces exemples :
 

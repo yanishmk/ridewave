@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   CalendarDays,
@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { formatCurrency, type JetSkiListing } from "@/lib/data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
 const steps = [
@@ -23,12 +24,85 @@ const steps = [
 ];
 
 export function BookingFlow({ listing }: { listing: JetSkiListing }) {
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<"pickup" | "delivery">("delivery");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const total = useMemo(() => {
     const delivery = mode === "delivery" && listing.deliveryAvailable ? listing.deliveryFee : 0;
     return listing.pricePerDay + delivery + listing.deposit;
   }, [listing, mode]);
+
+  async function submitRequest() {
+    setError(null);
+    setIsSubmitting(true);
+
+    let supabase: ReturnType<typeof createSupabaseBrowserClient>;
+    try {
+      supabase = createSupabaseBrowserClient();
+    } catch {
+      setIsSubmitting(false);
+      setError("Supabase doit être configuré avant d'envoyer une vraie demande.");
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setIsSubmitting(false);
+      router.push(`/connexion?redirectTo=${encodeURIComponent(`/reservation?jet=${listing.slug}`)}`);
+      return;
+    }
+
+    const clientName =
+      typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()
+        ? user.user_metadata.full_name.trim()
+        : user.email?.split("@")[0] ?? "Client RideWave";
+
+    const { data: request, error: requestError } = await supabase
+      .from("rental_requests")
+      .insert({
+        client_id: user.id,
+        owner_id: listing.ownerId ?? null,
+        listing_slug: listing.slug,
+        listing_name: listing.name,
+        client_name: clientName,
+        start_date: startDate || null,
+        end_date: endDate || null,
+        status: "pending",
+        location: listing.location,
+        estimate_total: total,
+        mode,
+        note: null,
+      })
+      .select("id")
+      .single();
+
+    if (requestError) {
+      setIsSubmitting(false);
+      setError("Impossible d'enregistrer la demande. Vérifiez les tables Supabase.");
+      return;
+    }
+
+    await supabase.from("conversations").insert({
+      client_id: user.id,
+      owner_id: listing.ownerId ?? null,
+      listing_slug: listing.slug,
+      listing_name: listing.name,
+      client_name: clientName,
+      owner_name: listing.host.name,
+      status: "request",
+      unread_for_client: 0,
+      unread_for_owner: 1,
+    });
+
+    router.push(`/reservation/succes?jet=${listing.slug}&request=${request.id}`);
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -70,11 +144,23 @@ export function BookingFlow({ listing }: { listing: JetSkiListing }) {
           </div>
         </div>
 
-        {step === 0 ? <DatesStep /> : null}
+        {step === 0 ? (
+          <DatesStep
+            startDate={startDate}
+            endDate={endDate}
+            setStartDate={setStartDate}
+            setEndDate={setEndDate}
+          />
+        ) : null}
         {step === 1 ? <ModeStep mode={mode} setMode={setMode} deliveryAvailable={listing.deliveryAvailable} /> : null}
         {step === 2 ? <ClientStep /> : null}
         {step === 3 ? <IdentityStep /> : null}
         {step === 4 ? <ReadyStep listing={listing} /> : null}
+        {error ? (
+          <p className="mt-5 rounded-lg bg-rose-50 p-3 text-sm font-bold text-rose-700">
+            {error}
+          </p>
+        ) : null}
 
         <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <button
@@ -95,13 +181,15 @@ export function BookingFlow({ listing }: { listing: JetSkiListing }) {
               <ChevronRight size={17} />
             </button>
           ) : (
-            <Link
-              href={`/reservation/succes?jet=${listing.slug}`}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#073b5d] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#052f4c]"
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={submitRequest}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#073b5d] px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#052f4c] disabled:translate-y-0 disabled:opacity-50"
             >
-              Envoyer la demande
+              {isSubmitting ? "Envoi..." : "Envoyer la demande"}
               <CheckCircle2 size={17} />
-            </Link>
+            </button>
           )}
         </div>
       </section>
@@ -128,13 +216,23 @@ export function BookingFlow({ listing }: { listing: JetSkiListing }) {
   );
 }
 
-function DatesStep() {
+function DatesStep({
+  startDate,
+  endDate,
+  setStartDate,
+  setEndDate,
+}: {
+  startDate: string;
+  endDate: string;
+  setStartDate: (value: string) => void;
+  setEndDate: (value: string) => void;
+}) {
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-950">Choisissez vos dates et horaires</h1>
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
-        <Input label="Date de départ" type="date" />
-        <Input label="Date de retour" type="date" />
+        <Input label="Date de départ" type="date" value={startDate} onChange={setStartDate} />
+        <Input label="Date de retour" type="date" value={endDate} onChange={setEndDate} />
         <Input label="Heure de récupération" type="time" defaultValue="09:30" />
       </div>
     </div>
@@ -239,11 +337,15 @@ function Input({
   type,
   placeholder,
   defaultValue,
+  value,
+  onChange,
 }: {
   label: string;
   type: string;
   placeholder?: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-800">
@@ -252,6 +354,8 @@ function Input({
         type={type}
         placeholder={placeholder}
         defaultValue={defaultValue}
+        value={value}
+        onChange={(event) => onChange?.(event.target.value)}
         className="h-11 rounded-lg border border-slate-200 px-3 text-sm text-slate-950 outline-none focus:border-cyan-500"
       />
     </label>

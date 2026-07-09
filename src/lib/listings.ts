@@ -1,10 +1,11 @@
 import { getListing as getLocalListing, listings as localListings } from "@/lib/data";
 import type { JetSkiListing } from "@/lib/data";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabasePublicClient } from "@/lib/supabase/server";
 import type { JetSkiRow } from "@/lib/supabase/types";
 
 function mapJetSkiRow(row: JetSkiRow): JetSkiListing {
   return {
+    ownerId: row.owner_id,
     slug: row.slug,
     name: row.name,
     brand: row.brand,
@@ -45,7 +46,7 @@ function mapJetSkiRow(row: JetSkiRow): JetSkiListing {
 }
 
 export async function getListings(): Promise<JetSkiListing[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
 
   if (!supabase) {
     return localListings;
@@ -66,7 +67,7 @@ export async function getListings(): Promise<JetSkiListing[]> {
 }
 
 export async function getListingBySlug(slug: string): Promise<JetSkiListing | undefined> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
 
   if (!supabase) {
     return getLocalListing(slug);

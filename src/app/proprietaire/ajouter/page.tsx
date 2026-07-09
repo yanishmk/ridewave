@@ -1,6 +1,11 @@
 import { ListingWizard } from "@/components/listing-wizard";
+import { requireUser } from "@/lib/auth";
 
-export default function AddListingPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AddListingPage() {
+  await requireUser("/proprietaire/ajouter");
+
   return (
     <div className="bg-slate-50">
       <section className="border-b border-slate-200 bg-white">

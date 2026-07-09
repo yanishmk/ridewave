@@ -7,6 +7,7 @@ export type BookingStatus =
   | "À venir aujourd'hui";
 
 export type JetSkiListing = {
+  ownerId?: string | null;
   slug: string;
   name: string;
   brand: string;

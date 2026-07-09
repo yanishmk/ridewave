@@ -2,84 +2,135 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   CalendarDays,
   Heart,
   MessageCircle,
   Pencil,
+  Save,
   Send,
   UserRound,
   XCircle,
 } from "lucide-react";
-import type { ReactNode } from "react";
-import {
-  bookings,
-  conversations,
-  formatCurrency,
-  listings,
-  type Booking,
-  type BookingStatus,
-} from "@/lib/data";
+import type {
+  ClientDashboardData,
+  ClientRequest,
+  DashboardProfile,
+  FavoriteListing,
+} from "@/lib/dashboard-data";
+import { formatCurrency } from "@/lib/data";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import type { RentalRequestStatus } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
-const statusStyles: Record<BookingStatus, string> = {
-  "En attente": "bg-amber-50 text-amber-700",
-  Confirmée: "bg-emerald-50 text-emerald-700",
-  Terminée: "bg-slate-100 text-slate-700",
-  Annulée: "bg-rose-50 text-rose-700",
-  "À venir aujourd'hui": "bg-cyan-50 text-cyan-700",
+const statusStyles: Record<RentalRequestStatus, string> = {
+  pending: "bg-amber-50 text-amber-700",
+  accepted: "bg-emerald-50 text-emerald-700",
+  completed: "bg-slate-100 text-slate-700",
+  cancelled: "bg-rose-50 text-rose-700",
+  declined: "bg-rose-50 text-rose-700",
 };
-
-const initialBookings: Booking[] = [
-  ...bookings,
-  {
-    id: "RW-7440",
-    listingSlug: "sea-doo-wake-pro-ottawa-river",
-    listingName: "Sea-Doo Wake Pro 230",
-    dateRange: "26 juillet 2026",
-    status: "En attente",
-    location: "Ottawa River",
-    total: 1373,
-    mode: "Livraison",
-  },
-];
 
 type DashboardTab = "demandes" | "favoris" | "messages" | "profil";
 
-export function ClientDashboard() {
+type ProfileDraft = Pick<DashboardProfile, "name" | "phone" | "boatingCard" | "preference">;
+
+export function ClientDashboard({ data }: { data: ClientDashboardData }) {
   const [activeTab, setActiveTab] = useState<DashboardTab>("demandes");
-  const [requests, setRequests] = useState(initialBookings);
-  const [favoriteSlugs, setFavoriteSlugs] = useState(
-    listings.slice(0, 4).map((listing) => listing.slug),
-  );
-  const [profile, setProfile] = useState({
-    name: "Alex Martin",
-    phone: "+1 613 555 0101",
-    email: "alex@exemple.ca",
-    boatingCard: "À vérifier",
-    preference: "Livraison au quai",
+  const [requests, setRequests] = useState<ClientRequest[]>(data.requests);
+  const [favorites, setFavorites] = useState<FavoriteListing[]>(data.favorites);
+  const [profile, setProfile] = useState(data.profile);
+  const [profileDraft, setProfileDraft] = useState<ProfileDraft>({
+    name: data.profile.name,
+    phone: data.profile.phone,
+    boatingCard: data.profile.boatingCard,
+    preference: data.profile.preference,
   });
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
-  const favorites = useMemo(
-    () => listings.filter((listing) => favoriteSlugs.includes(listing.slug)),
-    [favoriteSlugs],
-  );
+  const pendingCount = requests.filter((request) => request.status === "pending").length;
+  const upcomingCount = requests.filter((request) => request.status === "accepted").length;
+  const completedFields = [
+    profile.name,
+    profile.email,
+    profile.phone,
+    profile.boatingCard,
+    profile.preference,
+  ].filter(Boolean).length;
+  const profileCompletion = Math.round((completedFields / 5) * 100);
 
-  const pendingCount = requests.filter((request) => request.status === "En attente").length;
-  const upcomingCount = requests.filter(
-    (request) => request.status === "Confirmée" || request.status === "À venir aujourd'hui",
-  ).length;
+  async function cancelRequest(id: string) {
+    setBusyId(id);
+    setNotice(null);
 
-  function cancelRequest(id: string) {
+    const { error } = await supabase
+      .from("rental_requests")
+      .update({ status: "cancelled" })
+      .eq("id", id)
+      .eq("client_id", profile.id);
+
+    setBusyId(null);
+
+    if (error) {
+      setNotice("Impossible d'annuler cette demande pour le moment.");
+      return;
+    }
+
     setRequests((current) =>
       current.map((request) =>
-        request.id === id ? { ...request, status: "Annulée" as BookingStatus } : request,
+        request.id === id
+          ? { ...request, status: "cancelled", statusLabel: "Annulée" }
+          : request,
       ),
     );
   }
 
-  function removeFavorite(slug: string) {
-    setFavoriteSlugs((current) => current.filter((item) => item !== slug));
+  async function removeFavorite(slug: string) {
+    setBusyId(slug);
+    setNotice(null);
+
+    const { error } = await supabase
+      .from("favorites")
+      .delete()
+      .eq("user_id", profile.id)
+      .eq("listing_slug", slug);
+
+    setBusyId(null);
+
+    if (error) {
+      setNotice("Impossible de retirer ce favori pour le moment.");
+      return;
+    }
+
+    setFavorites((current) => current.filter((listing) => listing.slug !== slug));
+  }
+
+  async function saveProfile() {
+    setBusyId("profile");
+    setNotice(null);
+
+    const { error } = await supabase.from("profiles").upsert({
+      id: profile.id,
+      email: profile.email,
+      full_name: profileDraft.name,
+      phone: profileDraft.phone || null,
+      role: profile.role,
+      boating_card: profileDraft.boatingCard || null,
+      preference: profileDraft.preference || null,
+    });
+
+    setBusyId(null);
+
+    if (error) {
+      setNotice("Impossible d'enregistrer le profil pour le moment.");
+      return;
+    }
+
+    setProfile((current) => ({ ...current, ...profileDraft }));
+    setNotice("Profil enregistré.");
   }
 
   return (
@@ -87,17 +138,24 @@ export function ClientDashboard() {
       <section className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <p className="text-sm font-bold text-cyan-700">Espace client</p>
-          <h1 className="mt-2 text-4xl font-bold text-slate-950">Bonjour {profile.name}, vos demandes sont suivies ici.</h1>
+          <h1 className="mt-2 text-4xl font-bold text-slate-950">
+            Bonjour {profile.name}, vos demandes sont suivies ici.
+          </h1>
           <p className="mt-3 max-w-2xl text-slate-600">
-            Gérez vos demandes, favoris, messages et informations sans paiement au lancement.
+            Données liées à votre compte connecté : demandes, favoris, messages et profil.
           </p>
+          {notice ? (
+            <p className="mt-4 rounded-lg bg-cyan-50 px-4 py-3 text-sm font-bold text-cyan-900">
+              {notice}
+            </p>
+          ) : null}
         </div>
       </section>
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_340px] lg:px-8">
         <main className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-3">
-            <Metric icon={<CalendarDays size={22} />} label="Sorties à venir" value={`${upcomingCount}`} />
+            <Metric icon={<CalendarDays size={22} />} label="Demandes acceptées" value={`${upcomingCount}`} />
             <Metric icon={<Send size={22} />} label="Demandes en attente" value={`${pendingCount}`} />
             <Metric icon={<Heart size={22} />} label="Favoris" value={`${favorites.length}`} />
           </div>
@@ -125,46 +183,54 @@ export function ClientDashboard() {
 
           {activeTab === "demandes" ? (
             <Panel title="Mes demandes">
-              <div className="grid gap-3">
-                {requests.map((request) => (
-                  <article key={request.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-cyan-700">{request.id}</p>
-                        <h2 className="mt-1 text-lg font-bold text-slate-950">{request.listingName}</h2>
-                        <p className="mt-1 text-sm text-slate-600">
-                          {request.dateRange} · {request.location} · {request.mode}
-                        </p>
+              {requests.length ? (
+                <div className="grid gap-3">
+                  {requests.map((request) => (
+                    <article key={request.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-cyan-700">{request.id}</p>
+                          <h2 className="mt-1 text-lg font-bold text-slate-950">{request.listingName}</h2>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {request.dateRange} · {request.location} · {request.modeLabel}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={cn("rounded-full px-3 py-1 text-xs font-bold", statusStyles[request.status])}>
+                            {request.statusLabel}
+                          </span>
+                          <span className="text-sm font-bold text-slate-950">{formatCurrency(request.estimateTotal)}</span>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={cn("rounded-full px-3 py-1 text-xs font-bold", statusStyles[request.status])}>
-                          {request.status}
-                        </span>
-                        <span className="text-sm font-bold text-slate-950">{formatCurrency(request.total)}</span>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Link
-                        href="/messages"
-                        className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                      >
-                        <MessageCircle size={16} />
-                        Contacter
-                      </Link>
-                      {request.status === "En attente" ? (
-                        <button
-                          type="button"
-                          onClick={() => cancelRequest(request.id)}
-                          className="inline-flex h-10 items-center gap-2 rounded-full bg-rose-50 px-4 text-sm font-bold text-rose-700 hover:bg-rose-100"
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Link
+                          href="/messages"
+                          className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
                         >
-                          <XCircle size={16} />
-                          Annuler la demande
-                        </button>
-                      ) : null}
-                    </div>
-                  </article>
-                ))}
-              </div>
+                          <MessageCircle size={16} />
+                          Contacter
+                        </Link>
+                        {request.status === "pending" ? (
+                          <button
+                            type="button"
+                            disabled={busyId === request.id}
+                            onClick={() => cancelRequest(request.id)}
+                            className="inline-flex h-10 items-center gap-2 rounded-full bg-rose-50 px-4 text-sm font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                          >
+                            <XCircle size={16} />
+                            Annuler la demande
+                          </button>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title="Aucune demande réelle"
+                  copy="Vos futures demandes envoyées aux propriétaires apparaîtront ici."
+                />
+              )}
             </Panel>
           ) : null}
 
@@ -183,8 +249,9 @@ export function ClientDashboard() {
                         </div>
                         <button
                           type="button"
+                          disabled={busyId === listing.slug}
                           onClick={() => removeFavorite(listing.slug)}
-                          className="grid size-10 place-items-center rounded-full bg-rose-50 text-rose-700"
+                          className="grid size-10 place-items-center rounded-full bg-rose-50 text-rose-700 disabled:opacity-50"
                           aria-label={`Retirer ${listing.name} des favoris`}
                         >
                           <Heart size={17} fill="currentColor" />
@@ -200,49 +267,59 @@ export function ClientDashboard() {
                   ))}
                 </div>
               ) : (
-                <EmptyState title="Aucun favori" copy="Ajoutez des jet-skis depuis la page Explorer pour les retrouver ici." />
+                <EmptyState title="Aucun favori réel" copy="Ajoutez des jet-skis depuis Explorer pour les retrouver ici." />
               )}
             </Panel>
           ) : null}
 
           {activeTab === "messages" ? (
             <Panel title="Messages propriétaires">
-              <div className="grid gap-3">
-                {conversations.map((conversation) => (
-                  <Link
-                    key={conversation.id}
-                    href="/messages"
-                    className="rounded-lg border border-slate-200 bg-white p-4 transition hover:border-cyan-200"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-slate-950">{conversation.host}</p>
-                        <p className="mt-1 text-sm text-slate-600">{conversation.listing}</p>
+              {data.conversations.length ? (
+                <div className="grid gap-3">
+                  {data.conversations.map((conversation) => (
+                    <Link
+                      key={conversation.id}
+                      href="/messages"
+                      className="rounded-lg border border-slate-200 bg-white p-4 transition hover:border-cyan-200"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-slate-950">{conversation.host}</p>
+                          <p className="mt-1 text-sm text-slate-600">{conversation.listing}</p>
+                        </div>
+                        {conversation.unread ? (
+                          <span className="grid size-7 place-items-center rounded-full bg-cyan-600 text-xs font-bold text-white">
+                            {conversation.unread}
+                          </span>
+                        ) : null}
                       </div>
-                      {conversation.unread ? (
-                        <span className="grid size-7 place-items-center rounded-full bg-cyan-600 text-xs font-bold text-white">
-                          {conversation.unread}
-                        </span>
-                      ) : null}
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState title="Aucun message réel" copy="Les conversations créées depuis vos demandes apparaîtront ici." />
+              )}
             </Panel>
           ) : null}
 
           {activeTab === "profil" ? (
             <Panel title="Profil et préférences">
               <div className="grid gap-4 sm:grid-cols-2">
-                <ProfileInput label="Nom complet" value={profile.name} onChange={(name) => setProfile({ ...profile, name })} />
-                <ProfileInput label="Téléphone" value={profile.phone} onChange={(phone) => setProfile({ ...profile, phone })} />
-                <ProfileInput label="Courriel" value={profile.email} onChange={(email) => setProfile({ ...profile, email })} />
-                <ProfileInput label="Carte conducteur" value={profile.boatingCard} onChange={(boatingCard) => setProfile({ ...profile, boatingCard })} />
-                <ProfileInput label="Préférence" value={profile.preference} onChange={(preference) => setProfile({ ...profile, preference })} />
+                <ProfileInput label="Nom complet" value={profileDraft.name} onChange={(name) => setProfileDraft({ ...profileDraft, name })} />
+                <ProfileInput label="Téléphone" value={profileDraft.phone} onChange={(phone) => setProfileDraft({ ...profileDraft, phone })} />
+                <ProfileInput label="Courriel" value={profile.email} disabled />
+                <ProfileInput label="Carte conducteur" value={profileDraft.boatingCard} onChange={(boatingCard) => setProfileDraft({ ...profileDraft, boatingCard })} />
+                <ProfileInput label="Préférence" value={profileDraft.preference} onChange={(preference) => setProfileDraft({ ...profileDraft, preference })} />
               </div>
-              <div className="mt-5 rounded-lg bg-cyan-50 p-4 text-sm font-semibold text-cyan-900">
-                Ces champs sont simulés pour le MVP. Ils sont prêts à être reliés à Supabase Auth et à une table profils.
-              </div>
+              <button
+                type="button"
+                disabled={busyId === "profile"}
+                onClick={saveProfile}
+                className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#073b5d] px-5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                <Save size={17} />
+                Enregistrer
+              </button>
             </Panel>
           ) : null}
         </main>
@@ -250,34 +327,36 @@ export function ClientDashboard() {
         <aside className="space-y-6">
           <Panel title="Profil">
             <div className="flex items-center gap-3">
-              <span className="grid size-14 place-items-center rounded-full bg-[#073b5d] font-bold text-white">AM</span>
+              <span className="grid size-14 place-items-center rounded-full bg-[#073b5d] font-bold text-white">
+                {profile.initials}
+              </span>
               <div>
                 <p className="font-bold text-slate-950">{profile.name}</p>
-                <p className="text-sm text-slate-500">Client vérifié bientôt</p>
+                <p className="text-sm text-slate-500">{profile.email}</p>
               </div>
             </div>
             <div className="mt-4 grid gap-2 text-sm text-slate-600">
               <span className="inline-flex items-center gap-2">
-                <UserRound size={16} /> Profil complet à 86%
+                <UserRound size={16} /> Profil complet à {profileCompletion}%
               </span>
               <span className="inline-flex items-center gap-2">
-                <Pencil size={16} /> Préférence : {profile.preference}
+                <Pencil size={16} /> Préférence : {profile.preference || "Non renseignée"}
               </span>
             </div>
           </Panel>
 
           <Panel title="Prochaine action">
             <div className="rounded-lg bg-[#073b5d] p-5 text-white">
-              <p className="text-sm font-bold text-cyan-100">MVP sans paiement</p>
-              <p className="mt-3 text-2xl font-bold">Répondre vite</p>
+              <p className="text-sm font-bold text-cyan-100">Données réelles</p>
+              <p className="mt-3 text-2xl font-bold">Envoyer une demande</p>
               <p className="mt-2 text-sm text-cyan-50">
-                Le meilleur levier de conversion au lancement : propriétaires réactifs, prix clairs et messages simples.
+                Votre espace se remplit uniquement quand vous créez des favoris, demandes ou messages.
               </p>
               <Link
                 href="/explorer"
                 className="mt-5 inline-flex h-10 items-center justify-center rounded-full bg-white px-4 text-sm font-bold text-[#073b5d]"
               >
-                Explorer plus d&apos;annonces
+                Explorer les annonces
               </Link>
             </div>
           </Panel>
@@ -310,18 +389,21 @@ function ProfileInput({
   label,
   value,
   onChange,
+  disabled,
 }: {
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-800">
       {label}
       <input
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 rounded-lg border border-slate-200 px-3 text-sm text-slate-950 outline-none focus:border-cyan-500"
+        disabled={disabled}
+        onChange={(event) => onChange?.(event.target.value)}
+        className="h-11 rounded-lg border border-slate-200 px-3 text-sm text-slate-950 outline-none focus:border-cyan-500 disabled:bg-slate-50 disabled:text-slate-500"
       />
     </label>
   );

@@ -1,7 +1,13 @@
 import { MessageCenter } from "@/components/message-center";
-import { conversations } from "@/lib/data";
+import { requireUser } from "@/lib/auth";
+import { getConversations } from "@/lib/dashboard-data";
 
-export default function MessagesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function MessagesPage() {
+  const { supabase, user } = await requireUser("/messages");
+  const conversations = await getConversations(supabase, user);
+
   return (
     <div className="bg-slate-50">
       <section className="border-b border-slate-200 bg-white">
@@ -9,7 +15,7 @@ export default function MessagesPage() {
           <p className="text-sm font-bold text-cyan-700">Messagerie</p>
           <h1 className="mt-2 text-4xl font-bold text-slate-950">Échangez avec les propriétaires.</h1>
           <p className="mt-3 max-w-2xl text-slate-600">
-            Conversations propres, réservations partagées, notifications et réponses simulées.
+            Conversations liées à vos demandes et annonces RideWave.
           </p>
         </div>
       </section>

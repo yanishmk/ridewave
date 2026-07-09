@@ -1,5 +1,5 @@
 import { SuccessAnimation } from "@/components/success-animation";
-import { getListing, listings } from "@/lib/data";
+import { getListingBySlug, getListings } from "@/lib/listings";
 
 export default async function ReservationSuccessPage({
   searchParams,
@@ -7,7 +7,8 @@ export default async function ReservationSuccessPage({
   searchParams: Promise<{ jet?: string }>;
 }) {
   const { jet } = await searchParams;
-  const listing = (jet ? getListing(jet) : undefined) ?? listings[0];
+  const listings = await getListings();
+  const listing = (jet ? await getListingBySlug(jet) : undefined) ?? listings[0];
 
   return (
     <div className="bg-[linear-gradient(180deg,#ecfeff,#f8fafc)] px-4 py-12 sm:px-6 lg:px-8">

@@ -1,5 +1,5 @@
 import { BookingFlow } from "@/components/booking-flow";
-import { getListing, listings } from "@/lib/data";
+import { getListingBySlug, getListings } from "@/lib/listings";
 
 export default async function ReservationPage({
   searchParams,
@@ -7,7 +7,8 @@ export default async function ReservationPage({
   searchParams: Promise<{ jet?: string }>;
 }) {
   const { jet } = await searchParams;
-  const listing = (jet ? getListing(jet) : undefined) ?? listings[0];
+  const listings = await getListings();
+  const listing = (jet ? await getListingBySlug(jet) : undefined) ?? listings[0];
 
   return (
     <div className="bg-slate-50">

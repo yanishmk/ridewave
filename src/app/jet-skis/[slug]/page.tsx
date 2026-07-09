@@ -13,15 +13,17 @@ import type { ReactNode } from "react";
 import { BookingPanel } from "@/components/booking-panel";
 import { InteractiveMap } from "@/components/interactive-map";
 import { ListingCard } from "@/components/listing-card";
-import { formatCurrency, getListing, listings } from "@/lib/data";
+import { formatCurrency } from "@/lib/data";
+import { getListingBySlug, getListingSlugs, getSimilarListings } from "@/lib/listings";
 
-export function generateStaticParams() {
-  return listings.map((listing) => ({ slug: listing.slug }));
+export async function generateStaticParams() {
+  const slugs = await getListingSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const listing = getListing(slug);
+  const listing = await getListingBySlug(slug);
 
   return {
     title: listing ? `${listing.name} | RideWave` : "Jet-ski | RideWave",
@@ -31,11 +33,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function JetSkiDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const listing = getListing(slug);
+  const listing = await getListingBySlug(slug);
 
   if (!listing) notFound();
 
-  const similar = listings.filter((item) => item.slug !== listing.slug).slice(0, 3);
+  const similar = await getSimilarListings(listing.slug);
 
   return (
     <div className="bg-slate-50">

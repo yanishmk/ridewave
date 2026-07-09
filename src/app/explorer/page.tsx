@@ -1,8 +1,10 @@
 import { ExplorerExperience } from "@/components/explorer-experience";
 import { SearchPanel } from "@/components/search-panel";
-import { listings } from "@/lib/data";
+import { getListings } from "@/lib/listings";
 
-export default function ExplorerPage() {
+export default async function ExplorerPage() {
+  const listings = await getListings();
+
   return (
     <div className="bg-slate-50">
       <section className="border-b border-slate-200 bg-white">

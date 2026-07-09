@@ -12,7 +12,8 @@ import {
 import { AnimatedSection } from "@/components/animated-section";
 import { ListingCard } from "@/components/listing-card";
 import { SearchPanel } from "@/components/search-panel";
-import { categories, imagePool, listings } from "@/lib/data";
+import { categories, imagePool } from "@/lib/data";
+import { getListings } from "@/lib/listings";
 
 const trustItems = [
   { icon: CreditCard, title: "Paiement sécurisé", copy: "Cartes, dépôt et frais visibles avant confirmation." },
@@ -36,7 +37,8 @@ const steps = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const listings = await getListings();
   const popular = listings.slice(0, 3);
 
   return (

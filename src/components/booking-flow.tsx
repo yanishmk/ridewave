@@ -27,7 +27,7 @@ export function BookingFlow({ listing }: { listing: JetSkiListing }) {
   const [mode, setMode] = useState<"pickup" | "delivery">("delivery");
   const total = useMemo(() => {
     const delivery = mode === "delivery" && listing.deliveryAvailable ? listing.deliveryFee : 0;
-    return listing.pricePerDay + delivery + listing.serviceFee + listing.deposit;
+    return listing.pricePerDay + delivery + listing.deposit;
   }, [listing, mode]);
 
   return (
@@ -113,8 +113,7 @@ export function BookingFlow({ listing }: { listing: JetSkiListing }) {
         <div className="mt-5 space-y-3 text-sm">
           <Line label="Location" value={formatCurrency(listing.pricePerDay)} />
           <Line label="Livraison" value={mode === "delivery" ? formatCurrency(listing.deliveryFee) : "0 $"} />
-          <Line label="Service" value={formatCurrency(listing.serviceFee)} />
-          <Line label="Dépôt" value={formatCurrency(listing.deposit)} />
+          <Line label="Dépôt à prévoir" value={formatCurrency(listing.deposit)} />
           <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-base font-bold text-slate-950">
             <span>Estimation</span>
             <span>{formatCurrency(total)}</span>

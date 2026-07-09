@@ -1,10 +1,12 @@
 import { ListingWizard } from "@/components/listing-wizard";
 import { requireUser } from "@/lib/auth";
+import { getProfile } from "@/lib/dashboard-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function AddListingPage() {
-  await requireUser("/proprietaire/ajouter");
+  const { supabase, user } = await requireUser("/proprietaire/ajouter");
+  const profile = await getProfile(supabase, user);
 
   return (
     <div className="bg-slate-50">
@@ -18,7 +20,7 @@ export default async function AddListingPage() {
         </div>
       </section>
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <ListingWizard />
+        <ListingWizard profile={profile} />
       </section>
     </div>
   );
